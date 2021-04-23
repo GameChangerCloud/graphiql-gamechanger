@@ -1,14 +1,21 @@
 export const script = `
 echo "==> Generating graphql schema..."
 echo "$schema" > schema.graphql
+btitle=$title-back
+echo "==> Generating $btitle server using yeoman..."
+yes "" | yo aws-server-gamechanger $btitle schema.graphql
 
-echo "==> Generating $title server using yeoman..."
-yes "" | yo aws-server-gamechanger $title schema.graphql
-
-cd $title/terraform
-#On suppose que l'utilisateur a fait un aws configure avec ses ID + Access Key + region eu-west-1 + json
+cd $btitle/terraform
+# On suppose que l'utilisateur a fait un aws configure avec ses ID + Access Key + region eu-west-1 + json
 echo "==> Initializing terraform..."
-terraform init
+init=$(terraform init)
+if [[ $init == *"Terraform has been successfully initialized"* ]]
+then
+  echo "$init"
+else
+  echo "$init"
+  exit 1
+fi
 echo "==> Generating aws ressource..."
 yes "yes" | terraform apply -var-file="terraform.tfvar"
 
@@ -40,11 +47,24 @@ while IFS= read -r line; do url=$line; done < url.txt
 
 echo "endpoint url : "$url
 
-curl -X POST -H "Authorization: $idToken" -H "Content-Type: application/json" -d '{"initTable": "init"}' "$url"
+response=$(curl -X POST -H "Authorization: $idToken" -H "Content-Type: application/json" -d '{"initTable": "init"}' "$url")
+echo "$response"
+if [ "$response" != '{"statusCode":200,"body":"\\"Init done\\""}' ]
+then
+  echo "Stoping generation..." 
+  exit 1
+fi
+
 if [ "$db" = "Oui" ]
 then
   echo "==> Adding fakes data..."
-  curl -X POST -H "Authorization: $idToken" -H "Content-Type: application/json" -d '{"fillTable": "fill"}' "$url"
+  response=$(curl -X POST -H "Authorization: $idToken" -H "Content-Type: application/json" -d '{"fillTable": "fill"}' "$url")
+  echo "$response"
+  if [ "$response" != '{"statusCode":200,"body":"\\"Fill done\\""}' ]
+  then 
+    echo "Stoping generation..."
+    exit 1
+  fi
 fi
 
 cd ../..
@@ -56,7 +76,7 @@ echo "****************************"
 case $framework in
 
   "React")
-    rtitle=$title-react
+    rtitle=$title-front-react
     echo "==> Generating React app $rtitle..."
     npx create-react-app $rtitle
     cd $rtitle
@@ -69,22 +89,27 @@ case $framework in
 
 
     echo "==> Putting values for aws in src/config/app-config.json..."
-    frontValues=$(awk -F : '{print  $2}' ../$title/terraform/front.txt)
+    frontValues=$(awk -F : '{print  $2}' ../$btitle/terraform/front.txt)
     echo $frontValues
     # Transform as array
     front=($frontValues)
     userPoolId=\${front[0]}
     clientId=\${front[1]}
-    echo "User pool id : "$userPoolId "\nClient id :"$clientId
-    sed -i "s/\"userPool\": \"\"/\"userPool\": \"$userPoolId\"/g" src/config/app-config.json
-    sed -i "s/\"userPoolBaseUri\": \"\"/\"userPoolBaseUri\": \"https:\/\/\${front[2]}.auth.eu-west-1.amazoncognito.com\"/g" src/config/app-config.json
-    sed -i "s/\"clientId\": \"\"/\"clientId\": \"$clientId\"/g" src/config/app-config.json
-    # sed -i "s/\"callbackUri\": \"\"/\"callbackUri\": \"http:\/\/localhost:3000\/callback\"/g" src/config/app-config.json
-    # sed -i "s/\"signoutUri\": \"\"/\"signoutUri\": \"http:\/\/localhost:3000\"/g" src/config/app-config.json
+    echo "User pool id : "$userPoolId " Client id : "$clientId " Domain : "\${front[2]}
+    sed -i "s/\\"userPool\\": \\"\\"/\\"userPool\\": \\"$userPoolId\\"/g" src/config/app-config.json
+    sed -i "s/\\"userPoolBaseUri\\": \\"\\"/\\"userPoolBaseUri\\": \\"https:\\/\\/\${front[2]}.auth.eu-west-1.amazoncognito.com\\"/g" src/config/app-config.json
+    sed -i "s/\\"clientId\\": \\"\\"/\\"clientId\\": \\"$clientId\\"/g" src/config/app-config.json
 
     echo "==> Applying terraform..."
     cd terraform
-    terraform init
+    init=$(terraform init)
+    if [[ $init == *"Terraform has been successfully initialized"* ]]
+    then
+      echo "$init"
+    else
+      echo "$init"
+      exit 1
+    fi
     yes "yes" | terraform apply
 
     echo "==> Getting url from ids.txt..."
@@ -105,11 +130,10 @@ case $framework in
     done
 
     echo "==> Updating callback : '$ProductionUrl' and logout url : '$LogoutUrl'..."
-    # echo "aws cognito-idp update-user-pool-client --user-pool-id $userPoolId --client-id $clientId --callback-urls $ProductionUrl --logout-urls $LogoutUrl --region eu-west-1"
     aws cognito-idp update-user-pool-client --user-pool-id $userPoolId --client-id $clientId --callback-urls $ProductionUrl --logout-urls $LogoutUrl --region eu-west-1 --supported-identity-providers "COGNITO" --allowed-o-auth-flows "code" "implicit" --allowed-o-auth-scopes "phone" "email" "openid" "profile" "aws.cognito.signin.user.admin" --allowed-o-auth-flows-user-pool-client
 
-    sed -i "s|\"callbackUri\": \"\"|\"callbackUri\": \"$ProductionUrl\"|g" ../src/config/app-config.json
-    sed -i "s|\"signoutUri\": \"\"|\"signoutUri\": \"$LogoutUrl\"|g" ../src/config/app-config.json
+    sed -i "s|\\"callbackUri\\": \\"\\"|\\"callbackUri\\": \\"$ProductionUrl\\"|g" ../src/config/app-config.json
+    sed -i "s|\\"signoutUri\\": \\"\\"|\\"signoutUri\\": \\"$LogoutUrl\\"|g" ../src/config/app-config.json
 
     echo "==> Getting aws credentials..."
     awsCredentials=$(awk '{print $1" "$3}' ~/.aws/credentials)
@@ -151,4 +175,5 @@ case $framework in
     echo "ERROR no framework"
     ;;
 esac
+
 `

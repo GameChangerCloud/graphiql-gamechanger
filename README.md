@@ -1,8 +1,4 @@
-Example usage of [OneGraph](https://www.onegraph.com)'s open source [GraphiQL explorer](https://github.com/OneGraph/graphiql-explorer).
-
-[OneGraph](https://www.onegraph.com) provides easy, consistent access to the APIs that underlie your business--all through the power of GraphQL.
-
-Sign up at [https://www.onegraph.com](https://www.onegraph.com).
+This project use [OneGraph](https://www.onegraph.com)'s open source [GraphiQL explorer](https://github.com/OneGraph/graphiql-explorer) in order to edit GraphQL schema and generate using gamechanger.
 
 ## Setup
 
@@ -24,8 +20,30 @@ yarn start
 
 Your browser will automatically open to http://localhost:3000 with the explorer open.
 
-## Live demo
+## Requirement for the script
 
-The example app is deployed to GitHub pages at [https://onegraph.github.io/graphiql-explorer-example/](https://onegraph.github.io/graphiql-explorer-example/) and is in use in production at [https://www.onegraph.com/graphiql](https://www.onegraph.com/graphiql).
+- yeoman
+```
+npm install -g yo
+```
+- Back and front generator
+```
+npm install -g generator-aws-server-gamechanger
+npm install -g generator-react-client-gamechanger
+```
+- [terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
+- [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) (with an AWS Account well configured with  ```aws configure``` )
+- react deploy cli
+```
+npm install -g react-deploy-cli
+```
 
-![Preview](https://user-images.githubusercontent.com/476818/51567716-c00dfa00-1e4c-11e9-88f7-6d78b244d534.gif)
+## Usage
+
+Edit your GraphQL schema in the area
+
+(Inserer gif d'edition)
+
+Then click on generate and fill the informations
+
+You will download a **bash** script file which will generate your back and front named *title*-back and *title*-front-*frontFramework*. This will also deploy them on aws 

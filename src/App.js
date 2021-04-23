@@ -287,8 +287,8 @@ class App extends Component<{}, State> {
                   <Control.select model=".frontfw" id="frontfw" name="frontfw"
                     className="form-control" validators={{required}}>>
                     <option></option>
-                    <option>Amber</option>
                     <option>Angular</option>
+                    <option>Ember</option>
                     <option>React</option>
                     <option>Vue</option>
                   </Control.select>
