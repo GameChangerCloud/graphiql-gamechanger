@@ -1,4 +1,45 @@
 export const script = `
+echo "==> Checking requirements...."
+
+required=("yo" "terraform" "aws" "react-deploy")
+yoV=$(yo --version)
+terraformV=$(echo "\`terraform --version\`" | head -n 1 | cut -d'v' -f 2)
+awsV=$(echo "\`aws --version\`" | cut -d'/' -f 2 | cut -d' ' -f 1)
+rdV=$(react-deploy --version)
+
+actualVersions=($yoV $terraformV $awsV $rdV)
+requiredVersions=("3.1.1" "0.14.7" "2.1.29" "0.0.17")
+
+for i in $( seq 0 $((\${#required[@]}-1)) )
+do
+    if [[ \${actualVersions[i]} < \${requiredVersions[i]} ]]; then
+        echo "Mauvaise version de \${required[i]}"
+        exit 1
+    else
+        echo "V - \${required[i]} is present"
+    fi
+done
+
+string=$(yo -h &) 
+if [[ $string != *"Aws Server Gamechanger"* ]] && [[ $string != *"React Client Gamechanger"* ]]; then
+    echo "X - Aws Server Gamechanger and React Client Gamechanger not found"
+    exit 1
+else 
+    echo "V - Aws Server Gamechanger and React Client Gamechanger generators installed"
+fi
+
+secret=$(aws configure get default.aws_secret_access_key)
+id=$(aws configure get default.aws_access_key_id)
+
+if [ $secret == "" ] || [ $id == "" ]; then
+    echo "X - Aws not well configured"
+    exit 1
+else 
+    echo "V - Aws configured"
+fi
+
+echo "==> Requirements all ready..."
+
 echo "==> Generating graphql schema..."
 echo "$schema" > schema.graphql
 btitle=$title-back
@@ -152,8 +193,8 @@ case $framework in
     done
 
     echo "==> Putting aws access infos in deploy.js..."
-    sed -i "s/accessKeyId: ''/accessKeyId: '$keyId'/g" ../deploy.js
-    sed -i "s/secretAccessKey: ''/secretAccessKey: '$accessKey'/g" ../deploy.js
+    sed -i "s|accessKeyId: ''|accessKeyId: '$keyId'|g" ../deploy.js
+    sed -i "s|secretAccessKey: ''|secretAccessKey: '$accessKey'|g" ../deploy.js
 
     echo "==> Building app..."
     cd ..

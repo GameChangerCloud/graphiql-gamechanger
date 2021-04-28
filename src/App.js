@@ -1,27 +1,24 @@
-// @flow
-
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 import GraphiQL from "graphiql";
 import GraphiQLExplorer from "graphiql-explorer";
-import { /*buildClientSchema,*/ getIntrospectionQuery, parse } from "graphql";
+import { parse } from "graphql";
 import { makeDefaultArg, getDefaultScalarArgValue } from "./CustomArgs";
 import "graphiql/graphiql.css";
 import "./App.css";
 import type { GraphQLSchema } from "graphql";
-// import * as fs from 'fs';
 import { Button, Modal, ModalHeader, ModalBody, Label, Col} from 'reactstrap';
 import { Control, LocalForm, Errors } from 'react-redux-form';
-var generatedScript = require('./script.js');
+import * as nomlParsing from './parser.js'
 
+var generatedScript = require('./script.js');
 var nomnoml = require('nomnoml');
 
+//Generator modal directives
 const required = (val) => val && val.length;
 const maxLength = (len) => (val) => !(val) || (val.length <= len);
 const minLength = (len) => (val) => val && (val.length >= len); 	
 
-// const { exec } = require('child_process');
-
+//Not used for now
 function fetcher(params: Object): Object {
   return fetch(
     "https://serve.onegraph.com/dynamic?app_id=c333eb5b-04b2-4709-9246-31e18db397e1",
@@ -46,40 +43,36 @@ function fetcher(params: Object): Object {
     });
 }
 
-const DEFAULT_QUERY = `type User {
+const DEFAULT_QUERY = `type Employe {
   id: ID!
-  username: String
-  firstname: String
-  lastname: String
-  fullname: String
-  name: String @deprecated
+  email: String!
+  firstName: String
+  lastName: String
+  login: String!
+  password: String!
+  workInfo : Work
 }
 
-type Stat {
+type Work {
   id: ID!
-  views: Int
-  likes: Int
-  retweets: Int
-  responses: Int
+  job: String
+  salary: String
+  empl: [Employe]
 }
 
-type Notification {
-  id: ID!
-  type: String
+type Query {
+  Employes: [Employe]
 }
-
-type Meta {
-  id: ID!
-  count: Int
-}`;
+`;
 
 type State = {
   schema: ?GraphQLSchema,
   query: string,
   explorerIsOpen: boolean
 };
+
 const handleGenerateScript = (jsonData,values) => {
-//   const fileData = JSON.stringify(jsonData);
+  //Generate the script
 	var script = "#!/bin/bash\n\n" +
 		"schema=\"" + jsonData + "\"\n\n" +
 		"title=\"" + values.title + "\"\n\n" +
@@ -88,7 +81,6 @@ const handleGenerateScript = (jsonData,values) => {
     generatedScript.script
 
   const blob = new Blob([script], {type: "application/sh"});
-//   console.log(blob)
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.download = 'generatedSchema.sh';
@@ -101,84 +93,90 @@ class App extends Component<{}, State> {
   state = { 
     schema: null, 
     query: DEFAULT_QUERY, 
-    explorerIsOpen: true ,
+    explorerIsOpen: false ,
   };
 
 
   componentDidMount() {
-    fetcher({
-      query: getIntrospectionQuery()
-    }).then(result => {
-      const editor = this._graphiql.getQueryEditor();
-      editor.setOption("extraKeys", {
-        ...(editor.options.extraKeys || {}),
-        "Shift-Alt-LeftClick": this._handleInspectOperation
-      });
+    // fetcher({
+    //   query: getIntrospectionQuery()
+    // }).then(result => {
+    //   const editor = this._graphiql.getQueryEditor();
+    //   editor.setOption("extraKeys", {
+    //     ...(editor.options.extraKeys || {}),
+    //     "Shift-Alt-LeftClick": this._handleInspectOperation
+    //   });
 
-      // this.setState({ schema: buildClientSchema(result.data) });
-    });
+    //   // this.setState({ schema: buildClientSchema(result.data) });
+    // });
+    this._showNomnoml(this.state.query)
+
   }
 
-  _handleInspectOperation = (
-    cm: any,
-    mousePos: { line: Number, ch: Number }
-  ) => {
-    const parsedQuery = parse(this.state.query || "");
+  // Used when fetcher will be working
+  // _handleInspectOperation = (
+  //   cm: any,
+  //   mousePos: { line: Number, ch: Number }
+  // ) => {
+  //   const parsedQuery = parse(this.state.query || "");
 
-    if (!parsedQuery) {
-      console.error("Couldn't parse query document");
-      return null;
-    }
+  //   if (!parsedQuery) {
+  //     console.error("Couldn't parse query document");
+  //     return null;
+  //   }
 
-    var token = cm.getTokenAt(mousePos);
-    var start = { line: mousePos.line, ch: token.start };
-    var end = { line: mousePos.line, ch: token.end };
-    var relevantMousePos = {
-      start: cm.indexFromPos(start),
-      end: cm.indexFromPos(end)
-    };
+  //   var token = cm.getTokenAt(mousePos);
+  //   var start = { line: mousePos.line, ch: token.start };
+  //   var end = { line: mousePos.line, ch: token.end };
+  //   var relevantMousePos = {
+  //     start: cm.indexFromPos(start),
+  //     end: cm.indexFromPos(end)
+  //   };
 
-    var position = relevantMousePos;
+  //   var position = relevantMousePos;
 
-    var def = parsedQuery.definitions.find(definition => {
-      if (!definition.loc) {
-        console.log("Missing location information for definition");
-        return false;
-      }
+  //   var def = parsedQuery.definitions.find(definition => {
+  //     if (!definition.loc) {
+  //       console.log("Missing location information for definition");
+  //       return false;
+  //     }
 
-      const { start, end } = definition.loc;
-      return start <= position.start && end >= position.end;
-    });
+  //     const { start, end } = definition.loc;
+  //     return start <= position.start && end >= position.end;
+  //   });
 
-    if (!def) {
-      console.error(
-        "Unable to find definition corresponding to mouse position"
-      );
-      return null;
-    }
+  //   if (!def) {
+  //     console.error(
+  //       "Unable to find definition corresponding to mouse position"
+  //     );
+  //     return null;
+  //   }
 
-    var operationKind =
-      def.kind === "OperationDefinition"
-        ? def.operation
-        : def.kind === "FragmentDefinition"
-        ? "fragment"
-        : "unknown";
+  //   var operationKind =
+  //     def.kind === "OperationDefinition"
+  //       ? def.operation
+  //       : def.kind === "FragmentDefinition"
+  //       ? "fragment"
+  //       : "unknown";
 
-    var operationName =
-      def.kind === "OperationDefinition" && !!def.name
-        ? def.name.value
-        : def.kind === "FragmentDefinition" && !!def.name
-        ? def.name.value
-        : "unknown";
+  //   var operationName =
+  //     def.kind === "OperationDefinition" && !!def.name
+  //       ? def.name.value
+  //       : def.kind === "FragmentDefinition" && !!def.name
+  //       ? def.name.value
+  //       : "unknown";
 
-    var selector = `.graphiql-explorer-root #${operationKind}-${operationName}`;
+  //   var selector = `.graphiql-explorer-root #${operationKind}-${operationName}`;
 
-    var el = document.querySelector(selector);
-    el && el.scrollIntoView();
-  };
+  //   var el = document.querySelector(selector);
+  //   el && el.scrollIntoView();
+  // };
 
-	_handleEditQuery = (query: string): void => this.setState({ query });
-
+	_handleEditQuery = (query: string): void => {
+    this.setState({ query });
+    this._showNomnoml(query);
+  }
+  
 	_handleToggleExplorer = () => {
 		this.setState({ explorerIsOpen: !this.state.explorerIsOpen });
 	};
@@ -194,17 +192,22 @@ class App extends Component<{}, State> {
       this.setState({ isModalOpen: !this.state.isModalOpen});
   };
   _getQuery = (query: string): void => {
-    // console.log(query);
-    // handleGenerateScript(query["query"])
     this.setState({query: query["query"]})
     this.toggleModal()
   }
   _showNomnoml = (query : string): void => {
-    var src = '[nomnoml] is -> [awesome]';
-    // console.log(nomnoml.renderSvg(src));
-    var tag = nomnoml.renderSvg(src)
-    var div = document.getElementById("nom");
-    div.insertAdjacentHTML('beforeend',tag) 
+    //Parsing query to nomnoml
+    var src = nomlParsing.parse(query)
+    //if parsing fail
+    if(src === ""){
+      return
+    }
+    else {
+      var tag = nomnoml.renderSvg(src)
+      var div = document.getElementById("nomnoml");
+      if (div.childNodes.length !== 0 ) div.childNodes[0].remove();
+      div.insertAdjacentHTML('beforeend',tag) 
+    }
   }
 
   render() {
@@ -251,14 +254,11 @@ class App extends Component<{}, State> {
               label="Generate"
               title="Generate script for Gamechanger"
             />
-            <GraphiQL.Button
-              onClick={() => this._showNomnoml({query})}
-              label="Nomnoml"
-              title="Show Nomnoml"
-            />
           </GraphiQL.Toolbar>
         </GraphiQL>
 
+        <div id="nomnoml" className="nomnoml"></div>
+      
         <Modal isOpen={this.state.isModalOpen} toggle={this.toggleModal}>
           <ModalHeader toggle={this.toggleModal}>Choix des paramètres</ModalHeader>
           <ModalBody>
