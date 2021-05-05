@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import GraphiQL from "graphiql";
 import GraphiQLExplorer from "graphiql-explorer";
-import { parse } from "graphql";
+import { parse,getIntrospectionQuery,buildClientSchema } from "graphql";
 import { makeDefaultArg, getDefaultScalarArgValue } from "./CustomArgs";
 import "graphiql/graphiql.css";
 import "./App.css";
@@ -13,22 +13,28 @@ import * as nomlParsing from './parser.js'
 var generatedScript = require('./script.js');
 var nomnoml = require('nomnoml');
 
+var AWS = require('aws-sdk');
+
 //Generator modal directives
 const required = (val) => val && val.length;
 const maxLength = (len) => (val) => !(val) || (val.length <= len);
-const minLength = (len) => (val) => val && (val.length >= len); 	
+const minLength = (len) => (val) => val && (val.length >= len);
+const lowerCase = (val) => val && val === val.toLowerCase();
+const notAws = (val) => val && !val.toLowerCase().includes("aws")
+const region = (val) => val && /^\w{2}-(west|north|south|east|northwest|northeast|southeast|southwest)-\d+$/gm.test(val)
 
-//Not used for now
-function fetcher(params: Object): Object {
+
+function fetcher(api: String,token: String,params: Object): Object {
   return fetch(
-    "https://serve.onegraph.com/dynamic?app_id=c333eb5b-04b2-4709-9246-31e18db397e1",
+    api,
     {
       method: "POST",
       headers: {
         Accept: "application/json",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": token
       },
-      body: JSON.stringify(params)
+      body: params
     }
   )
     .then(function(response) {
@@ -68,7 +74,10 @@ type Query {
 type State = {
   schema: ?GraphQLSchema,
   query: string,
-  explorerIsOpen: boolean
+  explorerIsOpen: boolean,
+  drag: boolean,
+  api: string,
+  token: string,
 };
 
 const handleGenerateScript = (jsonData,values) => {
@@ -83,7 +92,7 @@ const handleGenerateScript = (jsonData,values) => {
   const blob = new Blob([script], {type: "application/sh"});
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.download = 'generatedSchema.sh';
+  link.download = values.title + '.sh';
   link.href = url;
   link.click();
 }
@@ -94,83 +103,88 @@ class App extends Component<{}, State> {
     schema: null, 
     query: DEFAULT_QUERY, 
     explorerIsOpen: false ,
+    drag : false, 
+    api : "https://serve.onegraph.com/dynamic?app_id=c333eb5b-04b2-4709-9246-31e18db397e1",
+    token : ""
   };
 
 
-  componentDidMount() {
-    // fetcher({
-    //   query: getIntrospectionQuery()
-    // }).then(result => {
-    //   const editor = this._graphiql.getQueryEditor();
-    //   editor.setOption("extraKeys", {
-    //     ...(editor.options.extraKeys || {}),
-    //     "Shift-Alt-LeftClick": this._handleInspectOperation
-    //   });
+  implFetch = () => {
+    fetcher(this.state.api,this.state.token,JSON.stringify({
+      query: getIntrospectionQuery()
+    })).then(result => {
+      const editor = this._graphiql.getQueryEditor();
+      editor.setOption("extraKeys", {
+        ...(editor.options.extraKeys || {}),
+        "Shift-Alt-LeftClick": this._handleInspectOperation
+      });
 
-    //   // this.setState({ schema: buildClientSchema(result.data) });
-    // });
-    this._showNomnoml(this.state.query)
-
+      this.setState({ schema: buildClientSchema(result.data) });
+    });
   }
 
-  // Used when fetcher will be working
-  // _handleInspectOperation = (
-  //   cm: any,
-  //   mousePos: { line: Number, ch: Number }
-  // ) => {
-  //   const parsedQuery = parse(this.state.query || "");
+  componentDidMount() {
+    this.implFetch()
+    this._showNomnoml(this.state.query)
+  }
 
-  //   if (!parsedQuery) {
-  //     console.error("Couldn't parse query document");
-  //     return null;
-  //   }
+  _handleInspectOperation = (
+    cm: any,
+    mousePos: { line: Number, ch: Number }
+  ) => {
+    const parsedQuery = parse(this.state.query || "");
 
-  //   var token = cm.getTokenAt(mousePos);
-  //   var start = { line: mousePos.line, ch: token.start };
-  //   var end = { line: mousePos.line, ch: token.end };
-  //   var relevantMousePos = {
-  //     start: cm.indexFromPos(start),
-  //     end: cm.indexFromPos(end)
-  //   };
+    if (!parsedQuery) {
+      console.error("Couldn't parse query document");
+      return null;
+    }
 
-  //   var position = relevantMousePos;
+    var token = cm.getTokenAt(mousePos);
+    var start = { line: mousePos.line, ch: token.start };
+    var end = { line: mousePos.line, ch: token.end };
+    var relevantMousePos = {
+      start: cm.indexFromPos(start),
+      end: cm.indexFromPos(end)
+    };
 
-  //   var def = parsedQuery.definitions.find(definition => {
-  //     if (!definition.loc) {
-  //       console.log("Missing location information for definition");
-  //       return false;
-  //     }
+    var position = relevantMousePos;
 
-  //     const { start, end } = definition.loc;
-  //     return start <= position.start && end >= position.end;
-  //   });
+    var def = parsedQuery.definitions.find(definition => {
+      if (!definition.loc) {
+        console.log("Missing location information for definition");
+        return false;
+      }
 
-  //   if (!def) {
-  //     console.error(
-  //       "Unable to find definition corresponding to mouse position"
-  //     );
-  //     return null;
-  //   }
+      const { start, end } = definition.loc;
+      return start <= position.start && end >= position.end;
+    });
 
-  //   var operationKind =
-  //     def.kind === "OperationDefinition"
-  //       ? def.operation
-  //       : def.kind === "FragmentDefinition"
-  //       ? "fragment"
-  //       : "unknown";
+    if (!def) {
+      console.error(
+        "Unable to find definition corresponding to mouse position"
+      );
+      return null;
+    }
 
-  //   var operationName =
-  //     def.kind === "OperationDefinition" && !!def.name
-  //       ? def.name.value
-  //       : def.kind === "FragmentDefinition" && !!def.name
-  //       ? def.name.value
-  //       : "unknown";
+    var operationKind =
+      def.kind === "OperationDefinition"
+        ? def.operation
+        : def.kind === "FragmentDefinition"
+        ? "fragment"
+        : "unknown";
 
-  //   var selector = `.graphiql-explorer-root #${operationKind}-${operationName}`;
+    var operationName =
+      def.kind === "OperationDefinition" && !!def.name
+        ? def.name.value
+        : def.kind === "FragmentDefinition" && !!def.name
+        ? def.name.value
+        : "unknown";
 
-  //   var el = document.querySelector(selector);
-  //   el && el.scrollIntoView();
-  // };
+    var selector = `.graphiql-explorer-root #${operationKind}-${operationName}`;
+
+    var el = document.querySelector(selector);
+    el && el.scrollIntoView();
+  };
 
 	_handleEditQuery = (query: string): void => {
     this.setState({ query });
@@ -184,13 +198,56 @@ class App extends Component<{}, State> {
 	handleSubmit(values) {
     this.toggleModal();
     console.log('Current State is: ' + JSON.stringify(values));
-    alert('Current State is: ' + JSON.stringify(values));
 		handleGenerateScript(this.state.query,values)
   }
 
-  toggleModal = () => {
-      this.setState({ isModalOpen: !this.state.isModalOpen});
-  };
+  handleApiSubmit(values) {
+    this.toggleApiModal();
+    var cognitoidentityserviceprovider = new AWS.CognitoIdentityServiceProvider({
+      region: values["region"],
+      "accessKeyId" : values["accessKeyId"], 
+      "secretAccessKey" : values["secretAccessKey"]
+    });
+    var params = {
+      AuthFlow: "ADMIN_NO_SRP_AUTH",
+      ClientId: values["clientId"], 
+      UserPoolId: values["poolId"],
+      AuthParameters: {
+        "USERNAME" : "admin@admin.fr",
+        "PASSWORD" : "password",
+      },
+      ContextData: {
+        HttpHeaders: [
+          {
+            headerName: 'Content-Type',
+            headerValue: 'application/x-amz-json-1.1'
+          },
+        ],
+        IpAddress: '1.1.1.1', 
+        ServerName: '',
+        ServerPath: '',
+      }
+    };
+    var tokenId = ""
+    cognitoidentityserviceprovider.adminInitiateAuth(params,function(err, data) {
+      if (err) {
+        console.log(err, err.stack);
+        alert(err);
+      }
+      else tokenId = data["AuthenticationResult"]["IdToken"];
+    })
+    setTimeout(() => {
+      console.log(tokenId)
+      this.setState({api: values["url"],token: tokenId})
+      this.implFetch()
+    }, 1000);
+  }
+
+
+  toggleModal = () => {this.setState({ isModalOpen: !this.state.isModalOpen});};
+  toggleApiModal = () => {this.setState({ isApiModalOpen: !this.state.isApiModalOpen});};
+  configureAWS = () => {this.toggleApiModal()}
+
   _getQuery = (query: string): void => {
     this.setState({query: query["query"]})
     this.toggleModal()
@@ -199,9 +256,7 @@ class App extends Component<{}, State> {
     //Parsing query to nomnoml
     var src = nomlParsing.parse(query)
     //if parsing fail
-    if(src === ""){
-      return
-    }
+    if(src === "") return
     else {
       var tag = nomnoml.renderSvg(src)
       var div = document.getElementById("nomnoml");
@@ -210,10 +265,30 @@ class App extends Component<{}, State> {
     }
   }
 
+
+  startDrag = (e) => {this.setState({drag: true})}
+  stopDrag = (e) => {this.setState({drag: false})}
+  onDrag = (e) => {
+    const globalWidth = document.getElementById("root").offsetWidth
+    if(this.state.drag){
+      const newX = document.getElementById("root").offsetWidth-e.clientX
+      if (newX < globalWidth*0.6 && newX > globalWidth/10)
+        document.getElementById("nomnoml").style.width = document.getElementById("root").offsetWidth-e.clientX+"px";
+    }
+  }
+
+  handleExecute = (value) => {
+    var query = value["query"];
+    if (query.startsWith("query"))
+      query = "{\"query\" : \"" + query.replace(/\n/g,"") + "\"}"
+    const res = fetcher(this.state.api,this.state.token,query)
+    return res
+  }
+
   render() {
     const { query, schema } = this.state;
     return (
-      <div className="graphiql-container">
+      <div className="graphiql-container" onMouseMove={(event) => this.onDrag(event)} onMouseUp={(e) => this.stopDrag(e)}>
         <GraphiQLExplorer
           schema={schema}
           query={query}
@@ -228,7 +303,7 @@ class App extends Component<{}, State> {
         />
         <GraphiQL
           ref={ref => (this._graphiql = ref)}
-          fetcher={fetcher}
+          fetcher={this.handleExecute}
           schema={schema}
           query={query}
           onEditQuery={this._handleEditQuery}
@@ -254,10 +329,20 @@ class App extends Component<{}, State> {
               label="Generate"
               title="Generate script for Gamechanger"
             />
+            <GraphiQL.Button
+              onClick={() => this.configureAWS()}
+              label="Configure"
+              title="Configure AWS"
+            />
           </GraphiQL.Toolbar>
         </GraphiQL>
-
-        <div id="nomnoml" className="nomnoml"></div>
+        <div id="drag" onMouseDown={(e) => this.startDrag(e)}></div>
+        <div className="wrapNom">
+          <div className="topBar">
+          </div>
+          <div id="nomnoml" className="nomnoml">
+          </div>
+        </div>
       
         <Modal isOpen={this.state.isModalOpen} toggle={this.toggleModal}>
           <ModalHeader toggle={this.toggleModal}>Choix des paramètres</ModalHeader>
@@ -268,15 +353,17 @@ class App extends Component<{}, State> {
                 <Col>
                   <Control.text model=".title" id="title" name="title"
                     placeholder="Titre" className="form-control" 
-                    validators={{required,minLength: minLength(2), maxLength: maxLength(15)}}/>
+                    validators={{required, minLength: minLength(2), maxLength: maxLength(15), notAws, lowerCase }}/>
                   <Errors
                     className="text-danger"
                     model=".title"
                     show="touched"
                     messages={{
                         required: 'Nécessaire ',
-                        minLength: 'Doit être plus long que 2 caractères',
-                        maxLength: 'Doit être moins long que 15 caractères'
+                        minLength: 'Doit être plus long que 2 caractères ',
+                        maxLength: 'Doit être moins long que 15 caractères ',
+                        notAws: 'Ne doit pas contenir le mot aws ',
+                        lowerCase: 'Ne doit pas contenir de majuscules '
                     }}
                   />
                 </Col>
@@ -323,6 +410,105 @@ class App extends Component<{}, State> {
               </div>
               <Button type="submit" value="submit" color="primary">Generate</Button>
 
+            </LocalForm>
+          </ModalBody>
+        </Modal>
+        <Modal isOpen={this.state.isApiModalOpen} toggle={this.toggleApiModal}>
+          <ModalHeader toggle={this.toggleApiModal}>Configuring AWS</ModalHeader>
+          <ModalBody>
+            <LocalForm onSubmit={(values) => this.handleApiSubmit(values)}>
+              <div className="form-group">
+                <Col>
+                  <Control.text model=".accessKeyId" id="accessKeyId" name="accessKeyId"
+                    placeholder="AWS access Key Id" className="form-control" 
+                    validators={{required}}/>
+                  <Errors
+                    className="text-danger"
+                    model=".accessKeyId"
+                    show="touched"
+                    messages={{
+                        required: 'Nécessaire ',
+                    }}
+                  />
+                </Col>
+              </div>
+              <div className="form-group">
+                <Col>
+                  <Control.text model=".secretAccessKey" id="secretAccessKey" name="secretAccessKey"
+                    placeholder="AWS secret Access Key" className="form-control" 
+                    validators={{required,}}/>
+                  <Errors
+                    className="text-danger"
+                    model=".secretAccessKey"
+                    show="touched"
+                    messages={{
+                        required: 'Nécessaire ',
+                    }}
+                  />
+                </Col>
+              </div>
+              <div className="form-group">
+                <Col>
+                  <Control.text model=".region" id="region" name="region"
+                    placeholder="aws region" className="form-control" 
+                    validators={{required, region}}/>
+                  <Errors
+                    className="text-danger"
+                    model=".region"
+                    show="touched"
+                    messages={{
+                        required: 'Nécessaire ',
+                        region: 'Doit être une region aws du type eu-west-1'
+                    }}
+                  />
+                </Col>
+              </div>
+              <div className="form-group">
+                <Col>
+                  <Control.text model=".url" id="url" name="url"
+                    placeholder="url" className="form-control" 
+                    validators={{required}}/>
+                  <Errors
+                    className="text-danger"
+                    model=".url"
+                    show="touched"
+                    messages={{
+                        required: 'Nécessaire ',
+                    }}
+                  />
+                </Col>
+              </div>
+              <div className="form-group">
+                <Col>
+                  <Control.text model=".poolId" id="poolId" name="poolId"
+                    placeholder="pool Id" className="form-control" 
+                    validators={{required}}/>
+                  <Errors
+                    className="text-danger"
+                    model=".poolId"
+                    show="touched"
+                    messages={{
+                        required: 'Nécessaire ',
+                    }}
+                  />
+                </Col>
+              </div>
+              <div className="form-group">
+                <Col>
+                  <Control.text model=".clientId" id="clientId" name="clientId"
+                    placeholder="client Id" className="form-control" 
+                    validators={{required}}/>
+                  <Errors
+                    className="text-danger"
+                    model=".clientId"
+                    show="touched"
+                    messages={{
+                        required: 'Nécessaire ',
+                    }}
+                  />
+                </Col>
+              </div>
+              <Button type="submit" value="submit" color="primary">Validate</Button>
             </LocalForm>
           </ModalBody>
         </Modal>
