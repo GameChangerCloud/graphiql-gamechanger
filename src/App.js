@@ -269,11 +269,11 @@ class App extends Component<{}, State> {
   startDrag = (e) => {this.setState({drag: true})}
   stopDrag = (e) => {this.setState({drag: false})}
   onDrag = (e) => {
-    const globalWidth = document.getElementById("root").offsetWidth
     if(this.state.drag){
+      const globalWidth = document.getElementById("root").offsetWidth
       const newX = document.getElementById("root").offsetWidth-e.clientX
       if (newX < globalWidth*0.6 && newX > globalWidth/10)
-        document.getElementById("nomnoml").style.width = document.getElementById("root").offsetWidth-e.clientX+"px";
+        document.getElementById("nomnoml").style.width = document.getElementById("root").offsetWidth-e.clientX-110+"px";
     }
   }
 
@@ -281,6 +281,14 @@ class App extends Component<{}, State> {
     var query = value["query"];
     if (query.startsWith("query"))
       query = "{\"query\" : \"" + query.replace(/\n/g,"") + "\"}"
+    if (query.startsWith("mutation")){
+      var mutation = query.split(' ')
+      mutation.shift()
+      mutation.shift()
+      mutation = mutation.join(' ').replace(/\n/g,"").replace(/"/g,"\\\"")
+      query = "{\"query\" : \" mutation " + mutation + "\"}"
+      // console.log(query);
+    }
     const res = fetcher(this.state.api,this.state.token,query)
     return res
   }

@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "aws-sdk": "^2.901.0",
     "bootstrap": "^4.6.0",
     "easygraphql-parser": "0.0.15",
     "fs": "0.0.1-security",

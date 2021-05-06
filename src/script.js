@@ -131,6 +131,7 @@ case $framework in
     cd $rtitle
     echo "==> Generating React front with yeoman..."
     yo react-client-gamechanger ../schema.graphql
+    echo "==> Launching npm install..."
     npm install
     APIurl="herokuPrefix + '$url'"
     echo "==> Putting api url '$APIurl' in src/constant/index.js..."
