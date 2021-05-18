@@ -9,7 +9,7 @@ import type { GraphQLSchema } from "graphql";
 import { Button, Modal, ModalHeader, ModalBody, Label, Col} from 'reactstrap';
 import { Control, LocalForm, Errors } from 'react-redux-form';
 import * as nomlParsing from './parser.js'
-
+import checkReservedWords from './utils.js'
 var generatedScript = require('./script.js');
 var nomnoml = require('nomnoml');
 
@@ -81,6 +81,12 @@ type State = {
 };
 
 const handleGenerateScript = (jsonData,values) => {
+  // Check if the scrips contains js reserved words
+  if (checkReservedWords(jsonData)){
+    alert("Your schema contains javascript reserved words")
+    return
+  }
+  
   //Generate the script
 	var script = "#!/bin/bash\n\n" +
 		"schema=\"" + jsonData + "\"\n\n" +

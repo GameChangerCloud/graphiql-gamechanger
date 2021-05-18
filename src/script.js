@@ -133,9 +133,8 @@ case $framework in
     yo react-client-gamechanger ../schema.graphql
     echo "==> Launching npm install..."
     npm install
-    APIurl="herokuPrefix + '$url'"
-    echo "==> Putting api url '$APIurl' in src/constant/index.js..."
-    sed -i "s|herokuPrefix + ''|$APIurl|g" src/constants/index.js
+    echo "==> Putting api url '$url' in src/constant/index.js..."
+    sed -i "s|herokuPrefix + ''|$url|g" src/constants/index.js
 
 
     echo "==> Putting values for AWS in src/config/app-config.json..."
@@ -146,6 +145,7 @@ case $framework in
     userPoolId=\${front[0]}
     clientId=\${front[1]}
     echo "User pool id : "$userPoolId " Client id : "$clientId " Domain : "\${front[2]}
+    sed -i "s/\\"region\\": \\"\\"/\\"region\\": \\"$AWS_DEFAULT_REGION\\"/g" src/config/app-config.json
     sed -i "s/\\"userPool\\": \\"\\"/\\"userPool\\": \\"$userPoolId\\"/g" src/config/app-config.json
     sed -i "s/\\"userPoolBaseUri\\": \\"\\"/\\"userPoolBaseUri\\": \\"https:\\/\\/\${front[2]}.auth.eu-west-1.amazoncognito.com\\"/g" src/config/app-config.json
     sed -i "s/\\"clientId\\": \\"\\"/\\"clientId\\": \\"$clientId\\"/g" src/config/app-config.json
@@ -207,6 +207,7 @@ case $framework in
     done
 
     echo "==> Putting AWS access infos in deploy.js..."
+    sed -i "s|region: ''|region: '$AWS_DEFAULT_REGION'|g" ../deploy.js
     sed -i "s|accessKeyId: ''|accessKeyId: '$keyId'|g" ../deploy.js
     sed -i "s|secretAccessKey: ''|secretAccessKey: '$accessKey'|g" ../deploy.js
 
