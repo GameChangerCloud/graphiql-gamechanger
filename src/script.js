@@ -134,7 +134,7 @@ case $framework in
     echo "==> Launching npm install..."
     npm install
     echo "==> Putting api url '$url' in src/constant/index.js..."
-    sed -i "s|herokuPrefix + ''|$url|g" src/constants/index.js
+    sed -i "s|herokuPrefix + ''|'$url'|g" src/constants/index.js
 
 
     echo "==> Putting values for AWS in src/config/app-config.json..."
