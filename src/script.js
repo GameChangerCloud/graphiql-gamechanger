@@ -95,7 +95,7 @@ while IFS= read -r line; do url=$line; done < url.txt
 
 echo "endpoint url : "$url
 
-response=$(curl -X POST -H "Authorization: $idToken" -H "Content-Type: application/json" -d '{"initTable": "init"}' "$url")
+response=$(curl -m 60 -X POST -H "Authorization: $idToken" -H "Content-Type: application/json" -d '{"initTable": "init"}' "$url")
 echo "$response"
 if [ "$response" != '{"statusCode":200,"body":"\\"Init done\\""}' ]
 then
@@ -106,7 +106,7 @@ fi
 if [ "$db" = "Oui" ]
 then
   echo "==> Adding fakes data..."
-  response=$(curl -X POST -H "Authorization: $idToken" -H "Content-Type: application/json" -d '{"fillTable": "fill"}' "$url")
+  response=$(curl -m 60 -X POST -H "Authorization: $idToken" -H "Content-Type: application/json" -d '{"fillTable": "fill"}' "$url")
   echo "$response"
   if [ "$response" != '{"statusCode":200,"body":"\\"Fill done\\""}' ]
   then 
