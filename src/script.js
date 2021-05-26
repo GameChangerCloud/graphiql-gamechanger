@@ -134,7 +134,7 @@ case $framework in
     echo "==> Launching npm install..."
     npm install
     echo "==> Putting api url '$url' in src/constant/index.js..."
-    sed -i "s|herokuPrefix + ''|'$url'|g" src/constants/index.js
+    sed -i "" "s|herokuPrefix + ''|'$url'|g" src/constants/index.js
 
 
     echo "==> Putting values for AWS in src/config/app-config.json..."
@@ -145,10 +145,10 @@ case $framework in
     userPoolId=\${front[0]}
     clientId=\${front[1]}
     echo "User pool id : "$userPoolId " Client id : "$clientId " Domain : "\${front[2]}
-    sed -i "s/\\"region\\": \\"\\"/\\"region\\": \\"$AWS_DEFAULT_REGION\\"/g" src/config/app-config.json
-    sed -i "s/\\"userPool\\": \\"\\"/\\"userPool\\": \\"$userPoolId\\"/g" src/config/app-config.json
-    sed -i "s/\\"userPoolBaseUri\\": \\"\\"/\\"userPoolBaseUri\\": \\"https:\\/\\/\${front[2]}.auth.eu-west-1.amazoncognito.com\\"/g" src/config/app-config.json
-    sed -i "s/\\"clientId\\": \\"\\"/\\"clientId\\": \\"$clientId\\"/g" src/config/app-config.json
+    sed -i "" "s/\\"region\\": \\"\\"/\\"region\\": \\"$AWS_DEFAULT_REGION\\"/g" src/config/app-config.json
+    sed -i "" "s/\\"userPool\\": \\"\\"/\\"userPool\\": \\"$userPoolId\\"/g" src/config/app-config.json
+    sed -i "" "s/\\"userPoolBaseUri\\": \\"\\"/\\"userPoolBaseUri\\": \\"https:\\/\\/\${front[2]}.auth.eu-west-1.amazoncognito.com\\"/g" src/config/app-config.json
+    sed -i "" "s/\\"clientId\\": \\"\\"/\\"clientId\\": \\"$clientId\\"/g" src/config/app-config.json
 
     echo "==> Applying terraform..."
     cd terraform
@@ -182,13 +182,13 @@ case $framework in
     echo "==> Updating callback : '$ProductionUrl' and logout url : '$LogoutUrl'..."
     # aws cognito-idp update-user-pool-client --user-pool-id $userPoolId --client-id $clientId --callback-urls $ProductionUrl --logout-urls $LogoutUrl --region eu-west-1 --supported-identity-providers "COGNITO" --allowed-o-auth-flows "code" "implicit" --allowed-o-auth-scopes "phone" "email" "openid" "profile" "aws.cognito.signin.user.admin" --allowed-o-auth-flows-user-pool-client
     cd ../../$btitle/terraform/
-    sed -i "s|callback_urls .*|callback_urls = [\\"$ProductionUrl\\"]|g" cognito.tf
-    sed -i "s|logout_urls .*|logout_urls = [\\"$LogoutUrl\\"]|g" cognito.tf
+    sed -i "" "s|callback_urls .*|callback_urls = [\\"$ProductionUrl\\"]|g" cognito.tf
+    sed -i "" "s|logout_urls .*|logout_urls = [\\"$LogoutUrl\\"]|g" cognito.tf
     yes "yes" | terraform apply -var-file="terraform.tfvar" -target=aws_cognito_user_pool_client.client
 
     cd ../../$rtitle/terraform
-    sed -i "s|\\"callbackUri\\": \\"\\"|\\"callbackUri\\": \\"$ProductionUrl\\"|g" ../src/config/app-config.json
-    sed -i "s|\\"signoutUri\\": \\"\\"|\\"signoutUri\\": \\"$LogoutUrl\\"|g" ../src/config/app-config.json
+    sed -i "" "s|\\"callbackUri\\": \\"\\"|\\"callbackUri\\": \\"$ProductionUrl\\"|g" ../src/config/app-config.json
+    sed -i "" "s|\\"signoutUri\\": \\"\\"|\\"signoutUri\\": \\"$LogoutUrl\\"|g" ../src/config/app-config.json
 
     echo "==> Getting AWS credentials..."
     awsCredentials=$(awk '{print $1" "$3}' ~/.aws/credentials)
@@ -207,9 +207,9 @@ case $framework in
     done
 
     echo "==> Putting AWS access infos in deploy.js..."
-    sed -i "s|region: ''|region: '$AWS_DEFAULT_REGION'|g" ../deploy.js
-    sed -i "s|accessKeyId: ''|accessKeyId: '$keyId'|g" ../deploy.js
-    sed -i "s|secretAccessKey: ''|secretAccessKey: '$accessKey'|g" ../deploy.js
+    sed -i "" "s|region: ''|region: '$AWS_DEFAULT_REGION'|g" ../deploy.js
+    sed -i "" "s|accessKeyId: ''|accessKeyId: '$keyId'|g" ../deploy.js
+    sed -i "" "s|secretAccessKey: ''|secretAccessKey: '$accessKey'|g" ../deploy.js
 
     echo "==> Building app..."
     cd ..
