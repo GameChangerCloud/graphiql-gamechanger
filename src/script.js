@@ -1,4 +1,17 @@
 export const script = `
+UNAME=$(uname)
+
+if [ "$UNAME" == "Linux" ] ; then
+	echo "==> Running on Linux..."
+  sedOptions='-i'
+elif [ "$UNAME" == "Darwin" ] ; then
+	echo "==> Running on Mac OS"
+  sedOptions='-i ""'
+elif [[ "$UNAME" == CYGWIN* || "$UNAME" == MINGW* ]] ; then
+	echo "==> Running on Windows"
+  sedOptions='-i'
+fi
+
 echo "==> Checking requirements...."
 
 required=("yo" "terraform" "aws" "react-deploy")
@@ -28,9 +41,9 @@ else
   echo "V - AWS Server Gamechanger and React Client Gamechanger generators installed"
 fi
 
-secret=$(aws configure get default.aws_secret_access_key)
-id=$(aws configure get default.aws_access_key_id)
-if [ $secret == "" ] || [ $id == "" ]; then
+accessKey=$(aws configure get default.aws_secret_access_key)
+keyId=$(aws configure get default.aws_access_key_id)
+if [ $accessKey == "" ] || [ $keyId == "" ]; then
   echo "X - AWS not well configured"
   exit 1
 else 
@@ -134,7 +147,7 @@ case $framework in
     echo "==> Launching npm install..."
     npm install
     echo "==> Putting api url '$url' in src/constant/index.js..."
-    sed -i "" "s|herokuPrefix + ''|'$url'|g" src/constants/index.js
+    sed $sedOptions "s|herokuPrefix + ''|'$url'|g" src/constants/index.js
 
 
     echo "==> Putting values for AWS in src/config/app-config.json..."
@@ -145,10 +158,10 @@ case $framework in
     userPoolId=\${front[0]}
     clientId=\${front[1]}
     echo "User pool id : "$userPoolId " Client id : "$clientId " Domain : "\${front[2]}
-    sed -i "" "s/\\"region\\": \\"\\"/\\"region\\": \\"$AWS_DEFAULT_REGION\\"/g" src/config/app-config.json
-    sed -i "" "s/\\"userPool\\": \\"\\"/\\"userPool\\": \\"$userPoolId\\"/g" src/config/app-config.json
-    sed -i "" "s/\\"userPoolBaseUri\\": \\"\\"/\\"userPoolBaseUri\\": \\"https:\\/\\/\${front[2]}.auth.eu-west-1.amazoncognito.com\\"/g" src/config/app-config.json
-    sed -i "" "s/\\"clientId\\": \\"\\"/\\"clientId\\": \\"$clientId\\"/g" src/config/app-config.json
+    sed $sedOptions "s/\\"region\\": \\"\\"/\\"region\\": \\"$AWS_DEFAULT_REGION\\"/g" src/config/app-config.json
+    sed $sedOptions "s/\\"userPool\\": \\"\\"/\\"userPool\\": \\"$userPoolId\\"/g" src/config/app-config.json
+    sed $sedOptions "s/\\"userPoolBaseUri\\": \\"\\"/\\"userPoolBaseUri\\": \\"https:\\/\\/\${front[2]}.auth.eu-west-1.amazoncognito.com\\"/g" src/config/app-config.json
+    sed $sedOptions "s/\\"clientId\\": \\"\\"/\\"clientId\\": \\"$clientId\\"/g" src/config/app-config.json
 
     echo "==> Applying terraform..."
     cd terraform
@@ -182,34 +195,18 @@ case $framework in
     echo "==> Updating callback : '$ProductionUrl' and logout url : '$LogoutUrl'..."
     # aws cognito-idp update-user-pool-client --user-pool-id $userPoolId --client-id $clientId --callback-urls $ProductionUrl --logout-urls $LogoutUrl --region eu-west-1 --supported-identity-providers "COGNITO" --allowed-o-auth-flows "code" "implicit" --allowed-o-auth-scopes "phone" "email" "openid" "profile" "aws.cognito.signin.user.admin" --allowed-o-auth-flows-user-pool-client
     cd ../../$btitle/terraform/
-    sed -i "" "s|callback_urls .*|callback_urls = [\\"$ProductionUrl\\"]|g" cognito.tf
-    sed -i "" "s|logout_urls .*|logout_urls = [\\"$LogoutUrl\\"]|g" cognito.tf
+    sed $sedOptions "s|callback_urls .*|callback_urls = [\\"$ProductionUrl\\"]|g" cognito.tf
+    sed $sedOptions "s|logout_urls .*|logout_urls = [\\"$LogoutUrl\\"]|g" cognito.tf
     yes "yes" | terraform apply -var-file="terraform.tfvar" -target=aws_cognito_user_pool_client.client
 
     cd ../../$rtitle/terraform
-    sed -i "" "s|\\"callbackUri\\": \\"\\"|\\"callbackUri\\": \\"$ProductionUrl\\"|g" ../src/config/app-config.json
-    sed -i "" "s|\\"signoutUri\\": \\"\\"|\\"signoutUri\\": \\"$LogoutUrl\\"|g" ../src/config/app-config.json
-
-    echo "==> Getting AWS credentials..."
-    awsCredentials=$(awk '{print $1" "$3}' ~/.aws/credentials)
-    credentials=($awsCredentials)
-    for i in "\${!credentials[@]}"; do 
-        if [ "\${credentials[$i]}" = 'aws_access_key_id' ]
-        then
-        echo "Key id : "\${credentials[$i+1]}
-        keyId=\${credentials[$i+1]}
-        fi
-        if [ "\${credentials[$i]}" = 'aws_secret_access_key' ]
-        then
-        echo "Access key : "\${credentials[$i+1]}
-        accessKey=\${credentials[$i+1]}
-        fi
-    done
+    sed $sedOptions "s|\\"callbackUri\\": \\"\\"|\\"callbackUri\\": \\"$ProductionUrl\\"|g" ../src/config/app-config.json
+    sed $sedOptions "s|\\"signoutUri\\": \\"\\"|\\"signoutUri\\": \\"$LogoutUrl\\"|g" ../src/config/app-config.json
 
     echo "==> Putting AWS access infos in deploy.js..."
-    sed -i "" "s|region: ''|region: '$AWS_DEFAULT_REGION'|g" ../deploy.js
-    sed -i "" "s|accessKeyId: ''|accessKeyId: '$keyId'|g" ../deploy.js
-    sed -i "" "s|secretAccessKey: ''|secretAccessKey: '$accessKey'|g" ../deploy.js
+    sed $sedOptions "s|region: ''|region: '$AWS_DEFAULT_REGION'|g" ../deploy.js
+    sed $sedOptions "s|accessKeyId: ''|accessKeyId: '$keyId'|g" ../deploy.js
+    sed $sedOptions "s|secretAccessKey: ''|secretAccessKey: '$accessKey'|g" ../deploy.js
 
     echo "==> Building app..."
     cd ..
