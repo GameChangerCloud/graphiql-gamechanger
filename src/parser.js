@@ -1,6 +1,6 @@
 // const util = require('util')
 const easygraphqlSchemaParser = require('easygraphql-parser')
-const PrimitiveTypes = ['Int', 'Float', 'String', 'Boolean', 'ID']
+var PrimitiveTypes = ['Int', 'Float', 'String', 'Boolean', 'ID']
 const PrimitiveOp = ['Query', 'Mutation', 'Subscription']
 
 export function parse(gql) {
@@ -10,6 +10,15 @@ export function parse(gql) {
   try {
     const schema = easygraphqlSchemaParser(gql)
     const keys = Object.keys(schema)
+
+    // Get all scalars and add it to PrimitiveTypes
+    keys.forEach((type) => {
+      const typeObject = schema[type]
+      if (typeObject['type'] === 'ScalarTypeDefinition')
+        PrimitiveTypes.push(type)
+    })
+
+    // Get all types and nomnoml it
     keys.forEach((type) => {
       const typeObject = schema[type]
       if (typeObject['type'] === 'ObjectTypeDefinition' && !PrimitiveOp.includes(type)) {
@@ -17,7 +26,12 @@ export function parse(gql) {
         typeObject['fields'].forEach((element) => {
           if (PrimitiveTypes.includes(element.type)) {
             attributes += element.name + ': ' + element.type + (element.isArray ? '\\[\\]' : '') + ';'
-          } else link += '[' + type + ']' + (element.isArray ? '->*' : '->') + '[' + element.type + ']\n'
+          } else {
+            if (true) {
+              // console.log(element);
+              link += '[' + type + ']' + (element.isArray ? '->*' : '->') + '[' + element.type + ']\n'
+            }
+          }
         })
         attributes = attributes.slice(0, -1) + ']\n'
         res += attributes + link
