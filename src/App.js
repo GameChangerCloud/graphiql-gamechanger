@@ -270,7 +270,7 @@ class App extends Component<{}, State> {
 
   handleExecute = (value) => {
     var query = value['query']
-    if (query.startsWith('query')) query = '{"query" : "' + query.replace(/\n/g, '') + '"}'
+    if (query.startsWith('query')) query = '{"query" : "' + query.replace(/\n/g, '').replace(/"/g, '\\"') + '"}'
     if (query.startsWith('mutation')) {
       var mutation = query.split(' ')
       mutation.shift()
