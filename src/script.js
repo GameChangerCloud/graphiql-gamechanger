@@ -21,7 +21,7 @@ awsV=$(echo "\`aws --version\`" | cut -d'/' -f 2 | cut -d' ' -f 1)
 rdV=$(react-deploy --version)
 
 actualVersions=($yoV $terraformV $awsV $rdV)
-requiredVersions=("3.1.1" "0.14.7" "2.1.29" "0.0.17")
+requiredVersions=("3.1.1" "1.1.5" "2.4.15" "0.0.17")
 
 for i in $( seq 0 $((\${#required[@]}-1)) )
 do
@@ -224,9 +224,25 @@ case $framework in
     echo "Generating Vue front..."
     ;;
 
+  "Angular")
+    rtitle=$title-front-angular
+    echo "==> Generating Angular app $rtitle..."
+    rm -rf $rtitle
+    mkdir $rtitle
+    cd $rtitle
+    yo angular-client-gamechanger ../schema.graphql
+    echo "==> Launching npm install..."
+    npm install
+    echo "Generation Finished..."
+    ;;
+
   *)
     echo "ERROR no framework"
     ;;
+
+
+
+
 esac
 
 `
