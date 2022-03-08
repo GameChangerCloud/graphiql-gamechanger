@@ -12,7 +12,7 @@
   padding: 50px; 
   height: 789px; /*To compensate graphiql explorer paddings */
   width: 500px;
-  overflow: auto;
+  overflow: scroll;
   margin: auto;
   background-color: rgb(240, 240, 240);
 }
