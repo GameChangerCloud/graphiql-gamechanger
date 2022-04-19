@@ -83,6 +83,9 @@ const handleGenerateScript = (jsonData, values) => {
     return
   }
 
+  //Handle quotes exception
+  jsonData = jsonData.replace(/"/g, "\\\"")
+
   //Generate the script
   var script = '#!/bin/bash\n\nschema="' + jsonData + '"\n\ntitle="' + values.title + '"\n\nframework="' + values.frontfw + '"\n\ndb="' + values.db + '"\n' + generatedScript.script
 
