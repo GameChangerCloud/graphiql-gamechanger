@@ -14,14 +14,14 @@ fi
 
 echo "==> Checking requirements...."
 
-required=("yo" "terraform" "aws" "react-deploy")
-yoV=$(yo --version)
+required=("@angular-devkit/schematics-cli" "terraform" "aws")
+shematicsV=$(yo --version)
 terraformV=$(echo "\`terraform --version\`" | head -n 1 | cut -d'v' -f 2)
 awsV=$(echo "\`aws --version\`" | cut -d'/' -f 2 | cut -d' ' -f 1)
 rdV=$(react-deploy --version)
 
-actualVersions=($yoV $terraformV $awsV $rdV)
-requiredVersions=("3.1.1" "1.1.5" "2.4.15" "0.0.17")
+actualVersions=($shematicsV $terraformV $awsV $rdV)
+requiredVersions=("9.0.5" "1.1.5" "2.4.15" "0.0.17")
 
 for i in $( seq 0 $((\${#required[@]}-1)) )
 do
@@ -33,6 +33,8 @@ do
   fi
 done
 
+
+///// CHECK IF SCHEMATIC INSTALLED
 string=$(yo -h &) 
 if [[ $string != *"Aws Server Gamechanger"* ]] && [[ $string != *"React Client Gamechanger"* ]]; then
   echo "X - AWS Server Gamechanger and React Client Gamechanger not found"
@@ -62,9 +64,9 @@ echo "==> Requirements all ready..."
 echo "==> Generating graphql schema..."
 echo "$schema" > schema.graphql
 btitle=$title-back
-echo "==> Generating $btitle server using yeoman..."
+echo "==> Generating $btitle nest server using schematics..."
 rm -rf $btitle
-yes "" | yo aws-server-gamechanger $btitle schema.graphql
+yes "" | schematics schematic-nest-server-gamechanger:generate --dry-run=false $btitle schema.graphql
 
 cd $btitle/terraform
 # On suppose que l'utilisateur a fait un aws configure avec ses ID + Access Key + region eu-west-1 + json
@@ -230,11 +232,73 @@ case $framework in
     rm -rf $rtitle
     mkdir $rtitle
     cd $rtitle
-    yo angular-client-gamechanger ../schema.graphql
+    schematicsuefol : angular-client-gamechanger ../schema.graphql:=   , 
     echo "==> Launching npm install..."
     npm install
     echo "Generation Finished..."
     ;;
+
+    echo "==> Putting values for AWS in src/config/app-config.json..."
+    frontValues=$(awk -F : '{print  $2}' ../$btitle/terraform/front.txt)
+    echo $frontValues
+    # Transform as array
+    front=($frontValues)
+    userPoolId=\${front[0]}
+    clientId=\${front[1]}
+    echo "User pool id : "$userPoolId " Client id : "$clientId " Domain : "\${front[2]}
+    sed $sedOptions "s/\\"region\\": \\"\\"/\\"region\\": \\"$AWS_DEFAULT_REGION\\"/g" src/config/app-config.json
+    sed $sedOptions "s/\\"userPool\\": \\"\\"/\\"userPool\\": \\"$userPoolId\\"/g" src/config/app-config.json
+    sed $sedOptions "s/\\"userPoolBaseUri\\": \\"\\"/\\"userPoolBaseUri\\": \\"https:\\/\\/\${front[2]}.auth.eu-west-1.amazoncognito.com\\"/g" src/config/app-config.json
+    sed $sedOptions "s/\\"clientId\\": \\"\\"/\\"clientId\\": \\"$clientId\\"/g" src/config/app-config.json
+
+    echo "==> Applying terraform..."
+    cd terraform
+    init=$(terraform init)
+    if [[ $init == *"Terraform has been successfully initialized"* ]]
+    then
+      echo "$init"
+    else
+      echo "$init"
+      exit 1
+    fi
+    yes "yes" | terraform apply
+
+    echo "==> Getting url from ids.txt..."
+    idsValues=$(awk -F : '{print $1 $2}' ids.txt)
+    # Transform as array
+    ids=($idsValues)
+    for i in "\${!ids[@]}"; do 
+        if [ "\${ids[$i]}" = 'URL_PRODUCTION' ]
+        then
+        ProductionUrl=https://\${ids[$i+1]}/callback
+        LogoutUrl=https://\${ids[$i+1]}
+        fi
+        if [ "\${ids[$i]}" = 'URL_STAGING' ]
+        then
+        StagingUrl=https://\${ids[$i+1]}/callback
+        # LogoutUrl=https://\${ids[$i+1]}
+        fi
+    done
+
+    echo "==> Updating callback : '$ProductionUrl' and logout url : '$LogoutUrl'..."
+    # aws cognito-idp update-user-pool-client --user-pool-id $userPoolId --client-id $clientId --callback-urls $ProductionUrl --logout-urls $LogoutUrl --region eu-west-1 --supported-identity-providers "COGNITO" --allowed-o-auth-flows "code" "implicit" --allowed-o-auth-scopes "phone" "email" "openid" "profile" "aws.cognito.signin.user.admin" --allowed-o-auth-flows-user-pool-client
+    cd ../../$btitle/terraform/
+    sed $sedOptions "s|callback_urls .*|callback_urls = [\\"$ProductionUrl\\"]|g" cognito.tf
+    sed $sedOptions "s|logout_urls .*|logout_urls = [\\"$LogoutUrl\\"]|g" cognito.tf
+    yes "yes" | terraform apply -var-file="terraform.tfvar" -target=aws_cognito_user_pool_client.client
+
+    cd ../../$rtitle/terraform
+    sed $sedOptions "s|\\"callbackUri\\": \\"\\"|\\"callbackUri\\": \\"$ProductionUrl\\"|g" ../src/config/app-config.json
+    sed $sedOptions "s|\\"signoutUri\\": \\"\\"|\\"signoutUri\\": \\"$LogoutUrl\\"|g" ../src/config/app-config.json
+
+    echo "==> Putting AWS access infos in deploy.js..."
+    sed $sedOptions "s|region: ''|region: '$AWS_DEFAULT_REGION'|g" ../deploy.js
+    sed $sedOptions "s|accessKeyId: ''|accessKeyId: '$keyId'|g" ../deploy.js
+    sed $sedOptions "s|secretAccessKey: ''|secretAccessKey: '$accessKey'|g" ../deploy.js
+
+    echo "==> Building app..."
+    cd ..
+    npm run build
 
   *)
     echo "ERROR no framework"
