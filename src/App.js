@@ -348,36 +348,15 @@ class App extends Component<{}, State> {
                 </Col>
               </div>
               <div className="form-group">
-                <Label htmlFor="frontfw">Front</Label>
+                <Label htmlFor="frontfw">Client</Label>
                 <Col>
                   <Control.select model=".frontfw" id="frontfw" name="frontfw" className="form-control" validators={{ required }}>
                     <option></option>
                     <option>Angular</option>
-                    <option>Ember</option>
-                    <option>React</option>
-                    <option>Vue</option>
                   </Control.select>
                   <Errors
                     className="text-danger"
                     model=".frontfw"
-                    show="touched"
-                    messages={{
-                      required: 'Nécessaire',
-                    }}
-                  />
-                </Col>
-              </div>
-              <div className="form-group">
-                <Label htmlFor="db">Jeu de données inclus</Label>
-                <Col>
-                  <Control.select model=".db" id="db" name="db" className="form-control" validators={{ required }}>
-                    <option></option>
-                    <option>Oui</option>
-                    <option>Non</option>
-                  </Control.select>
-                  <Errors
-                    className="text-danger"
-                    model=".db"
                     show="touched"
                     messages={{
                       required: 'Nécessaire',
@@ -397,60 +376,7 @@ class App extends Component<{}, State> {
             <LocalForm onSubmit={(values) => this.handleApiSubmit(values)}>
               <div className="form-group">
                 <Col>
-                  <Control.text model=".accessKeyId" id="accessKeyId" name="accessKeyId" placeholder="AWS access Key Id" className="form-control" validators={{ required }} />
-                  <Errors
-                    className="text-danger"
-                    model=".accessKeyId"
-                    show="touched"
-                    messages={{
-                      required: 'Nécessaire ',
-                    }}
-                  />
-                </Col>
-              </div>
-              <div className="form-group">
-                <Col>
-                  <Control.text model=".secretAccessKey" id="secretAccessKey" name="secretAccessKey" placeholder="AWS secret Access Key" className="form-control" validators={{ required }} />
-                  <Errors
-                    className="text-danger"
-                    model=".secretAccessKey"
-                    show="touched"
-                    messages={{
-                      required: 'Nécessaire ',
-                    }}
-                  />
-                </Col>
-              </div>
-              <div className="form-group">
-                <Col>
-                  <Control.text model=".region" id="region" name="region" placeholder="aws region" className="form-control" validators={{ required, region }} />
-                  <Errors
-                    className="text-danger"
-                    model=".region"
-                    show="touched"
-                    messages={{
-                      required: 'Nécessaire ',
-                      region: 'Doit être une region aws du type eu-west-1',
-                    }}
-                  />
-                </Col>
-              </div>
-              <div className="form-group">
-                <Col>
-                  <Control.text model=".url" id="url" name="url" placeholder="url" className="form-control" validators={{ required }} />
-                  <Errors
-                    className="text-danger"
-                    model=".url"
-                    show="touched"
-                    messages={{
-                      required: 'Nécessaire ',
-                    }}
-                  />
-                </Col>
-              </div>
-              <div className="form-group">
-                <Col>
-                  <Control.text model=".poolId" id="poolId" name="poolId" placeholder="pool Id" className="form-control" validators={{ required }} />
+                  <Control.text model=".poolId" id="poolId" name="poolId" placeholder="AWS Pool ID" className="form-control" validators={{ required }} />
                   <Errors
                     className="text-danger"
                     model=".poolId"
@@ -463,13 +389,27 @@ class App extends Component<{}, State> {
               </div>
               <div className="form-group">
                 <Col>
-                  <Control.text model=".clientId" id="clientId" name="clientId" placeholder="client Id" className="form-control" validators={{ required }} />
+                  <Control.text model=".clientId" id="clientId" name="clientId" placeholder="AWS Client ID" className="form-control" validators={{ required }} />
                   <Errors
                     className="text-danger"
                     model=".clientId"
                     show="touched"
                     messages={{
                       required: 'Nécessaire ',
+                    }}
+                  />
+                </Col>
+              </div>
+              <div className="form-group">
+                <Col>
+                  <Control.text model=".region" id="region" name="region" placeholder="AWS region" className="form-control" validators={{ required, region }} />
+                  <Errors
+                    className="text-danger"
+                    model=".region"
+                    show="touched"
+                    messages={{
+                      required: 'Nécessaire ',
+                      region: 'Doit être une region aws du type eu-west-1',
                     }}
                   />
                 </Col>

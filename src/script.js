@@ -15,7 +15,7 @@ fi
 echo "==> Checking requirements...."
 
 required=("@angular-devkit/schematics-cli" "terraform" "aws")
-shematicsV=$(yo --version)
+shematicsV=$(npm show @angular-devkit/schematics version)
 terraformV=$(echo "\`terraform --version\`" | head -n 1 | cut -d'v' -f 2)
 awsV=$(echo "\`aws --version\`" | cut -d'/' -f 2 | cut -d' ' -f 1)
 rdV=$(react-deploy --version)
