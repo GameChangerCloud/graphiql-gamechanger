@@ -21,7 +21,7 @@ awsV=$(echo "\`aws --version\`" | cut -d'/' -f 2 | cut -d' ' -f 1)
 rdV=$(react-deploy --version)
 
 actualVersions=($shematicsV $terraformV $awsV $rdV)
-requiredVersions=("9.0.5" "1.1.5" "2.4.15" "0.0.17")
+requiredVersions=("15.1.2" "1.1.5" "2.4.15" "0.0.17")
 
 for i in $( seq 0 $((\${#required[@]}-1)) )
 do
@@ -33,16 +33,6 @@ do
   fi
 done
 
-
-///// CHECK IF SCHEMATIC INSTALLED
-string=$(yo -h &) 
-if [[ $string != *"Aws Server Gamechanger"* ]] && [[ $string != *"React Client Gamechanger"* ]]; then
-  echo "X - AWS Server Gamechanger and React Client Gamechanger not found"
-  exit 1
-else 
-  echo "V - AWS Server Gamechanger and React Client Gamechanger generators installed"
-fi
-
 accessKey=$(aws configure get default.aws_secret_access_key)
 keyId=$(aws configure get default.aws_access_key_id)
 if [ $accessKey == "" ] || [ $keyId == "" ]; then
@@ -51,7 +41,9 @@ if [ $accessKey == "" ] || [ $keyId == "" ]; then
 else 
   echo "V - AWS configured"
 fi
+
 export AWS_DEFAULT_REGION=$(aws configure get region --profile default)
+
 if [ -z $AWS_DEFAULT_REGION ]; then
   echo "AWS region not set"
   exit 1
@@ -63,9 +55,17 @@ echo "==> Requirements all ready..."
 
 echo "==> Generating graphql schema..."
 echo "$schema" > schema.graphql
-btitle=$title-back
-echo "==> Generating $btitle nest server using schematics..."
+echo "==> Generating main folder"
+btitle=$title-gamechanger
 rm -rf $btitle
+mkdir $btitle
+cd $btitle
+npm init
+npm install schematic-nest-server-gamechanger@latest
+npm install schematic-angular-client-gamechanger@latest
+
+echo "==> Generating $btitle nest server using schematics..."
+
 yes "" | schematics schematic-nest-server-gamechanger:generate --dry-run=false $btitle schema.graphql
 
 cd $btitle/terraform
@@ -232,7 +232,7 @@ case $framework in
     rm -rf $rtitle
     mkdir $rtitle
     cd $rtitle
-    schematicsuefol : angular-client-gamechanger ../schema.graphql:=   , 
+    schematics schematic-angular-client-gamechanger:generate $rtitle ../schema.graphql   
     echo "==> Launching npm install..."
     npm install
     echo "Generation Finished..."
