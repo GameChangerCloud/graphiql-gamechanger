@@ -60,13 +60,13 @@ btitle=$title-gamechanger
 rm -rf $btitle
 mkdir $btitle
 cd $btitle
-npm init
+yes "" | npm init
 npm install schematic-nest-server-gamechanger@latest
 npm install schematic-angular-client-gamechanger@latest
 
-echo "==> Generating $btitle nest server using schematics..."
+echo "==> Generating $title nest server using schematics..."
 
-yes "" | schematics schematic-nest-server-gamechanger:generate --dry-run=false $btitle schema.graphql
+schematics schematic-nest-server-gamechanger:generate --dry-run=false --name=$btitle --graphql-file=../schema.graphql
 
 cd $btitle/terraform
 # On suppose que l'utilisateur a fait un aws configure avec ses ID + Access Key + region eu-west-1 + json
@@ -147,7 +147,7 @@ case $framework in
     echo "==> Generating React front with yeoman..."
     yo react-client-gamechanger ../schema.graphql
     echo "==> Launching npm install..."
-    npm install
+    yes "" |npm install
     echo "==> Putting api url '$url' in src/constant/index.js..."
     sed $sedOptions "s|herokuPrefix + ''|'$url'|g" src/constants/index.js
 
@@ -229,10 +229,9 @@ case $framework in
   "Angular")
     rtitle=$title-front-angular
     echo "==> Generating Angular app $rtitle..."
-    rm -rf $rtitle
-    mkdir $rtitle
-    cd $rtitle
-    schematics schematic-angular-client-gamechanger:generate $rtitle ../schema.graphql   
+    rm -rf $rtitl
+    schematics schematic-angular-client-gamechanger:generate --dry-run=false --name=$rtitle --graphql-file=../schema.graphql 
+    cd $rtitle  
     echo "==> Launching npm install..."
     npm install
     echo "Generation Finished..."
