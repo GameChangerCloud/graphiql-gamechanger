@@ -22,19 +22,7 @@ Your browser will automatically open to http://localhost:3000 with the explorer 
 
 # Requirement for the script
 
-- yeoman
-
-```
-npm install -g yo
-```
-
-- Back and front generator
-
-```
-npm install -g generator-aws-server-gamechanger
-npm install -g generator-react-client-gamechanger
-```
-
+- schematics cli
 - [terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
 - [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) (with an AWS Account well configured with `aws configure` )
 - react deploy cli
