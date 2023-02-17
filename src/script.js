@@ -80,7 +80,7 @@ else
   exit 1
 fi
 echo "==> Generating AWS ressource..."
-yes "yes" | terraform apply -var-file="terraform.tfvar"
+yes "yes" | terraform apply -var-file="terraform.tfvars"
 
 # Getting poolID and clientID from cognito.txt
 echo "==> Getting cognito IDs..."
